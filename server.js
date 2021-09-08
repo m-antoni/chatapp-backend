@@ -19,11 +19,17 @@ io.on("connection", (socket) => {
     socket.on('join_room', ({ username, roomname }) => {
         // create user 
         const c_user = joinUser(socket.id, username, roomname);
-        console.log(socket.id)
-        socket.join(c_user.room);
+        socket.join(c_user.roomname);
+
+        //display a welcome message to the user who have joined a room
+        socket.emit("message", {
+            user_id: c_user.id,
+            username: c_user.username,
+            text: `Welcome ${c_user.username}`,
+        });
 
         // display a welcome message to the user who have joined a room  
-        socket.broadcast.to(c_user.room).emit('message', {
+        socket.broadcast.to(c_user.roomname).emit('message', {
             user_id: c_user.id,
             username: c_user.username,
             text: `${c_user.username} has joined the chat room`

@@ -3,13 +3,8 @@ const c_users = [];
 
 // joins the user to specific room
 const joinUser = (id, username, roomname) => {
-    
     const join_user = { id, username, roomname };
-    
     c_users.push(join_user);
-
-    console.log(c_users);
-    
     return join_user;
 }
 
