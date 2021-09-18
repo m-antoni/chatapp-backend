@@ -56,16 +56,17 @@ io.on("connection", (socket) => {
         socket.on('disconnect', () => {
             // the user is deleted from array of users and a left room message displayed
             const c_user = userDisconnect(socket.id);
+            console.log('disconnect')
 
             if(c_user){
-                io.to(c_user.room).emit('message', {
+                io.to(c_user.roomname).emit('message', {
                     user_id: c_user.id,
                     username: c_user.username,
-                    text: `${c_user.username} has left the room`
+                    text: `${c_user.username} has left the room`,
+                    date: moment().format('MM-DD-YYYY HH:mmA'),
                 });
             }
         })
-
     })
 
 
