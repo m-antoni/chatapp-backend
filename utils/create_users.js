@@ -2,7 +2,7 @@
 const c_users = [];
 
 // joins the user to specific room
-const joinUser = (id, username, roomname) => {
+const joinRoom = (id, username, roomname) => {
     const join_user = { id, username, roomname };
     c_users.push(join_user);
     return join_user;
@@ -26,7 +26,7 @@ const userDisconnect = (id) => {
 
 
 module.exports = {
-    joinUser,
+    joinRoom,
     getCurrentUser,
     userDisconnect
 }
