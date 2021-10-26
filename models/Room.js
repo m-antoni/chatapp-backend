@@ -1,15 +1,23 @@
 const mongoose = require('mongoose');
 
-const messageSchema = new mongoose.Schema({
+const RoomSchema = new mongoose.Schema({
+    socket_id: {
+        type: String,
+        required: true
+    },
     roomname: {
         type: String,
         required: true
     },
-    messages: [
+    users: [
         {
-            socket_id: {
+            user_id: {
                 type: String
             },
+        }
+    ],
+    messages: [
+        {
             text: {
                 type: String
             },
@@ -21,9 +29,14 @@ const messageSchema = new mongoose.Schema({
                 default: Date.now
             }
         }
-    ]
+    ],
+    date: {
+        type: Date,
+        default: Date.now,
+        required: true
+    }
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
 
-const Message = mongoose.model('messages', messageSchema);
+const Room = mongoose.model('rooms', RoomSchema);
 
-module.exports = Message;
+module.exports = Room;

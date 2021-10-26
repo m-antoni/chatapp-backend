@@ -1,46 +1,76 @@
-const app = require('express')();
+const express = require('express');
+const app = express()
 const server = require('http').createServer(app);
-require('dotenv').config();
 const moment = require('moment');
-const { MongoClient } = require('mongodb');
+const mongoose = require('mongoose');
+require('dotenv').config();
+const connectDB = require('./config/db');
+const cors = require('cors');
+const os = require('os');
+const { joinRoom } = require('./controllers/chat.controller');
 const io = require('socket.io')(server, { cors: { origin: "*" }});
 
-const PORT = process.env.PORT || 5000;
-const Message = require('./models/message');
-const JoinUser = require('./models/joinUser');
 
-const uri = process.env.MONGO_URI;
-const client = new MongoClient(uri);
-client.connect();
+// MongoDB Connection
+// connectDB();
 
-async function main(){
-    try {
-        // Connect to the MongoDB cluster
-        await client.connect();
-        console.log('MongoDB is connected successfully!')
-        
-        const userChangeStreams = client.db('chat-db').collection('users').watch();
-        const roomsChangeStreams = client.db('chat-db').collection('rooms').watch();
+// enable cors
+app.use(cors());
+app.options('*', cors());
 
-        userChangeStreams.on('change', next => {
-            // process next document
-            console.log(next)
-        })
+// parse json request body
+app.use(express.json());
 
-        roomsChangeStreams.on('change', next => {
-            // process next document
-            console.log(next)
-        })
-        
-    } catch (e) {
-        console.error(e);
-        console.log('Error! Database can\'t connect');
-    } finally {
-        // await client.close();
+// parse urlencoded request body
+app.use(express.urlencoded({ extended: true }));
+
+
+// api base route
+app.get('/info', (req, res) => {
+    const info = {
+        details: 'Simple Chat App using MERN Stack, socket.io',
+        created: 'Michael Antoni',
+        server: {
+            node: process.version,
+            platform: os.cpus().length,
+            memory: Math.round( os.totalmem() / 1024 / 1024 ) 
+        }
     }
-}
- 
-main().catch(console.error);
+
+    res.json(info);
+});
+
+
+
+// Mongodb Connection
+mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true, 
+    useUnifiedTopology: true,
+})
+
+const connection = mongoose.connection;
+
+connection.once('open', () => {
+    console.log('MongoDB database connected.');
+
+    // change streams 
+    const changeStreams = connection.collection('users').watch();
+
+    changeStreams.on('change', (change) => {
+        switch (change.operationType) {
+            case 'insert':
+                console.log('Change Strem activated')
+                break;
+        
+            default:
+                break;
+        }
+    })
+
+
+})
+
+
 
 
 
@@ -48,13 +78,11 @@ main().catch(console.error);
 io.on("connection", (socket) => {
     // socket.emit('message','Socket is running...');
     // for a new user joining the room
-    console.log("Connected: " + socket.id);
+    console.log("Socket ID: " + socket.id);
 
-    socket.on("disconnect", () => {
-      console.log("Disconnected: " + socket.id);
-    });
+    socket.on('joinRoom', async ({ username, roomname }) => {
 
-    socket.on('join_room', ({ username, roomname }) => {
+        console.log(username, roomname, socket.id)
 
         // create user 
         let join_params = {
@@ -65,27 +93,22 @@ io.on("connection", (socket) => {
         }
 
         socket.join(join_params.roomname);
-        joinUser(client, join_params).then(res => {
-            // display a welcome message
-            socket.emit("message", {
-                user_id: res.join.socket_id,
-                username: res.join.username,
-                text: `Welcome ${res.join.username}`,
-                date: moment().format('MM-DD-YYYY HH:mmA')
-            });
 
-             // display a welcome message to the user who have joined a room  
-            socket.broadcast.to(res.join.roomname).emit('message', {
-                user_id: res.join.socket_id,
-                username: res.join.username,
-                text: `${res.join.username} has joined the chat room`,
-                date: moment().format('MM-DD-YYYY HH:mmA'),
-            });
-        }).catch(err => console.log(err));
-       
+        console.log(userJoin)
+
+        if(userJoin.status === 0){
+            console.log(userJoin.message)
+        }else{
+           
+        }
     })
 
 
+
+    socket.on('leaveRoom', ({ socket_id}) => {
+        socket.leave(socket_id)
+        console.log('User has left the room', socket_id)
+    })
 
     // user sending the message
     socket.on('chat', (text) => {
@@ -114,114 +137,25 @@ io.on("connection", (socket) => {
     });
 
 
+
+    socket.on('disconnect', () => {
+        console.log('Disconnected', socket.id)
+    })
+
+
 // console.log("Socket ID:" , socket.id )
 });
 
 
 
-const joinUser = async (client, params) => {
-    let data = {};
-    try {
-        
-        console.log(params);
+// api routes
+app.use('/api', require('./routes/chat.routes'));
 
-        const result = await client.db('chat-db').collection('users').insertOne(params);
-        
-        const checkRoom = await client.db('chat-db').collection('rooms').findOne({ roomname: params.roomname });
-
-        console.log(checkRoom)
-
-        if(!checkRoom){
-
-            let insert = {
-                roomname: params.roomname,
-                socket_id: params.socket_id,
-                messages: []
-            }
-
-            await client.db('chat-db').collection('rooms').insertOne(insert);
-        }
-
-        console.log(result);
-
-        data = { status: 1, join: params, message: 'success'};
-    } catch (err) {
-        console.log(err)
-        data = { status: 0, message: 'Server Error'};
-    }
-
-    return data;
-}
-
-
-const userDisconnect = async (client, socket_id) => {
-    let data = {};    
-    try {
-        let user;
-
-        const findUser = await client.db('chat-db').collection('users').findOne({ socket_id: socket_id });
-        
-        user = findUser;
-
-        await client.db('chat-db').collection('users').deleteOne({ socket_id: socket_id });
-
-        data = { status: 1, user };
-
-    } catch (error) {
-        console.log(error);
-        data = { status: 0, message: 'Server Error' }
-    }
-
-    return data;
-}
-
-
-
-const sendMessage = async (params) => {
-    let data = {};
-    try {
-
-        // get the user data
-        let user_data = await JoinUser.findOne({ socket_id: params.socket_id });
-
-        console.log(user_data);
-
-        let checkRoom = await Message.findOne({ roomname: user_data.roomname });
-
-        if(checkRoom){
-            let updateMessage = {
-                socket_id: user_data.socket_id,
-                username: user_data.username,
-                text: params.text,
-            }
-
-            checkRoom.messages = [...checkRoom.messages, updateMessage];
-            await checkRoom.save();
-
-        } else{
-            let storeMessage = {
-                roomname: user_data.roomname,
-                messages: [{ socket_id: user_data.socket_id, username: user_data.username, text: params.text }]
-            }
-
-            let newMessage = new Message(storeMessage);
-            await newMessage.save();
-        }
-
-        let messages = await Message.findOne({ roomname: user_data.roomname }).select('messages').slice('array', -1);
-        data = { status: 1, roomname: user_data.roomname, messages, message: 'success' };
-
-    } catch (err) {
-        console.log(err)
-        data = { status: 0, message: 'Server Error'};
-    }   
-
-    return data;
-}
-
-
-
+const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
 })
+
+
+
