@@ -57,17 +57,19 @@ connection.once('open', () => {
     const changeStreams = connection.collection('users').watch();
 
     changeStreams.on('change', (change) => {
+        console.log(change)
         switch (change.operationType) {
             case 'insert':
-                console.log('Change Strem activated')
+                console.log('Change Stream: INSERT')
                 break;
-        
+            case 'update':
+                console.log('Change Stream: UPDATE')
+
+                    break;
             default:
                 break;
         }
     })
-
-
 })
 
 
@@ -93,14 +95,6 @@ io.on("connection", (socket) => {
         }
 
         socket.join(join_params.roomname);
-
-        console.log(userJoin)
-
-        if(userJoin.status === 0){
-            console.log(userJoin.message)
-        }else{
-           
-        }
     })
 
 
@@ -119,12 +113,6 @@ io.on("connection", (socket) => {
             socket_id: socket.id,
             text
         }
-
-        sendMessage(sendMsg).then(res => {
-            // console.log(res)
-            console.log(res.messages)
-        
-        }).catch(err => console.log(err));
 
         io.to(c_user.roomname).emit('message', {
             user_id: c_user.id,

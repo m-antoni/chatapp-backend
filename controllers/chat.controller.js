@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const Room = require('./../models/Room');
 const User = require('./../models/User');
 
@@ -12,7 +11,14 @@ exports.login = async (req, res) => {
 
         if(findUser){
             // check if the username is already in the room 
-            const findUserInRoom = await Room.findOne({ roomname: roomname, users: { $elemMatch: { user_id: findUser._id } }});
+            const findUserInRoom = await Room.findOne({ 
+                                            roomname: roomname, 
+                                            users: { 
+                                                $elemMatch: { 
+                                                    user_id: findUser._id 
+                                                } 
+                                            }
+                                        });
 
             if(findUserInRoom){
                 res.status(404).json({ message: `${username} is already in the room, please try another name` });
@@ -26,17 +32,23 @@ exports.login = async (req, res) => {
 
         let data = {};
         if(findRoom){
-            console.log('UPDATE')
             // update room users field
-            const update = await Room.findOneAndUpdate({ roomname: roomname }, { $push: { users: { user_id: user._id } } });
+            const update = await Room.findOneAndUpdate(
+                                    { roomname: roomname },
+                                    { $push: { 
+                                            users: { 
+                                                user_id: user._id 
+                                            }
+                                        } 
+                                });
 
-            data['socket_id'] = update.socket_id;
-            data['messages'] = update.messages;
-            data['date'] = update.date;
+            data['socket_id']   = update.socket_id;
+            data['messages']    = update.messages;
+            data['date']        = update.date;
+            data['roomname']    = update.roomname
 
         }else{
             // insert the new room 
-            console.log('INSERT')
             const room = await Room.create({ 
                                 socket_id, 
                                 roomname, 
@@ -45,10 +57,10 @@ exports.login = async (req, res) => {
                             })
             console.log(room.socket_id)
 
-            data['socket_id'] = room.socket_id;
-            data['messages'] = room.messages;
-            data['date'] = room.date;
-
+            data['socket_id']   = room.socket_id;
+            data['messages']    = room.messages;
+            data['date']        = room.date;
+            data['roomname']    = room.roomname
         }
 
         res.json({ 
@@ -56,6 +68,7 @@ exports.login = async (req, res) => {
             user_data: { 
                 socket_id: data.socket_id,
                 username: user.username,
+                roomname: data.roomname,
                 messages: data.messages,
                 date: data.date,
             } 
