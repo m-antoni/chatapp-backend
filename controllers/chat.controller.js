@@ -1,3 +1,6 @@
+const { capitalize } = require('./../utils/helpers');
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
 const Room = require('./../models/Room');
 const User = require('./../models/User');
 
@@ -34,45 +37,87 @@ exports.login = async (req, res) => {
         if(findRoom){
             // update room users field
             const update = await Room.findOneAndUpdate(
-                                    { roomname: roomname },
-                                    { $push: { 
-                                            users: { 
-                                                user_id: user._id 
-                                            }
-                                        } 
-                                });
-
-            data['socket_id']   = update.socket_id;
-            data['messages']    = update.messages;
-            data['date']        = update.date;
-            data['roomname']    = update.roomname
+                                    { 
+                                        roomname: roomname
+                                    },
+                                    { 
+                                        $push: { 
+                                            users: {
+                                                user_id: user._id,
+                                                username: user.username,
+                                            },
+                                            messages: {
+                                                user_id: user._id,
+                                                username: user.username,
+                                                text: `Welcome ${capitalize(user.username)}`
+                                            },
+                                        }
+                                    }
+                                );
+            data = update;          
 
         }else{
             // insert the new room 
             const room = await Room.create({ 
                                 socket_id, 
                                 roomname, 
-                                users: [{ user_id: user._id }], 
-                                messages: [] 
+                                users: [
+                                    { user_id: user._id }
+                                ],
+                                messages: [
+                                    {
+                                        user_id: user._id,
+                                        username: user.username,
+                                        text: `Welcome ${capitalize(user.username)}`
+                                    }
+                                ] 
                             })
-            console.log(room.socket_id)
 
-            data['socket_id']   = room.socket_id;
-            data['messages']    = room.messages;
-            data['date']        = room.date;
-            data['roomname']    = room.roomname
+            data = room;                
         }
 
         res.json({ 
             message: 'user inserted success', 
             user_data: { 
+                room_id: data._id,
                 socket_id: data.socket_id,
                 username: user.username,
+                user_id: user._id,
                 roomname: data.roomname,
-                messages: data.messages,
                 date: data.date,
             } 
         });
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: 'Server Error' });
+    }
+}
+
+
+exports.get_all_messages = async (req, res) => {
+    try {
+        
+        const pipeline = [
+            {
+                $match: {
+                    _id: ObjectId(req.params.id)
+                } 
+            },
+            {
+                $project: {
+                    _id: 0,
+                    messages: "$messages",
+                    total: {
+                        $size: "$messages"
+                    }
+                }
+            }
+        ]
+
+        const getAllMessages = await Room.aggregate(pipeline);
+
+        res.json({ user_data: getAllMessages[0] });
 
     } catch (error) {
         console.log(error)
@@ -80,24 +125,56 @@ exports.login = async (req, res) => {
     }
 }
 
-exports.leave_room = async (client, socket_id) => {
-    let data = {};    
+
+exports.chat_message = async (userData) => {
     try {
-        let user;
+    
+        const room = await Room.findOneAndUpdate(
+            {
+                _id: ObjectId(userData.room_id)
+            },
+            {
+                $push: {
+                    "messages": {
+                        user_id: userData.user_id,
+                        username: userData.username,
+                        text: userData.text
+                    },  
+                }
+            }
+        )
 
-        // const findUser = await client.db('chat-db').collection('users').findOne({ socket_id: socket_id });
-        
-        // user = findUser;
+    } catch (err) {
+        console.log(err);
+    }
+}
 
-        // await client.db('chat-db').collection('users').deleteOne({ socket_id: socket_id });
 
-        // data = { status: 1, user };
+// update remove the user_id  in the users array
+exports.leave_room = async (userData) => {
+    // console.log(userData)
+    try {
+        await Room.findOneAndUpdate(
+                { socket_id: userData.socket_id },
+                {
+                    $pull: {
+                        users: {
+                            user_id: userData.user_id
+                        }
+                    },
+                    $push :{
+                        messages: {
+                            user_id: userData._id,
+                            username: userData.username,
+                            text: `${capitalize(userData.username)} has left the chat room`
+                        },
+                    }
+
+                },
+            );
 
     } catch (error) {
         console.log(error);
-        data = { status: 0, message: 'Server Error' }
     }
-
-    return data;
 }
 

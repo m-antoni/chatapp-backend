@@ -18,10 +18,13 @@ const RoomSchema = new mongoose.Schema({
     ],
     messages: [
         {
-            text: {
+            user_id: {
                 type: String
             },
             username: {
+                type: String
+            },
+            text: {
                 type: String
             },
             date: {

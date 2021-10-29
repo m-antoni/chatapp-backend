@@ -3,13 +3,14 @@ const app = express()
 const server = require('http').createServer(app);
 const moment = require('moment');
 const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
 require('dotenv').config();
 const connectDB = require('./config/db');
 const cors = require('cors');
 const os = require('os');
-const { joinRoom } = require('./controllers/chat.controller');
+const { joinRoom, leave_room, chat_message } = require('./controllers/chat.controller');
 const io = require('socket.io')(server, { cors: { origin: "*" }});
-
+const Room = require('./models/Room');
 
 // MongoDB Connection
 // connectDB();
@@ -52,27 +53,69 @@ const connection = mongoose.connection;
 
 connection.once('open', () => {
     console.log('MongoDB database connected.');
-
     // change streams 
-    const changeStreams = connection.collection('users').watch();
+    const userChangeStreams = connection.collection('users').watch();
+    const roomsChangeStreams = connection.collection('rooms').watch();
 
-    changeStreams.on('change', (change) => {
+    // userChangeStreams.on('change', (change) => {
+    //     console.log(change)
+    //     switch (change.operationType) {
+    //         case 'insert':
+    //             console.log('Change Stream USER: INSERT')
+    //             break;
+    //         case 'update':
+    //             console.log('Change Stream USER: UPDATE')
+    //             break;
+    //         case 'delete':
+    //             console.log('Change Stream USER: DELETE')
+    //         default:
+    //             break;
+    //     }
+    // })
+
+    roomsChangeStreams.on('change', async (change) => {
+
+        const pipeline = [
+            {
+                $match: {
+                    _id: change.documentKey._id
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    socket_id: "$socket_id",
+                    messages: "$messages",
+                    total_messages: {
+                        $size: "$messages"
+                    }
+                }
+            }
+        ];
+
+        const room = await Room.aggregate(pipeline);
+
         console.log(change)
+        console.log(room)
+                                    
         switch (change.operationType) {
             case 'insert':
-                console.log('Change Stream: INSERT')
+                console.log('Change Stream ROOM: INSERT')
+                io.to(room[0].socket_id).emit('message', room[0])
                 break;
             case 'update':
-                console.log('Change Stream: UPDATE')
-
-                    break;
+                console.log('Change Stream ROOM: UPDATE')
+                io.to(room[0].socket_id).emit('message', room[0])
+                break;
+            case 'delete': 
+                console.log('Change Stream ROOM: DELETE')
+                break;
             default:
                 break;
         }
+ 
     })
 })
-
-
 
 
 
@@ -82,56 +125,23 @@ io.on("connection", (socket) => {
     // for a new user joining the room
     console.log("Socket ID: " + socket.id);
 
-    socket.on('joinRoom', async ({ username, roomname }) => {
-
-        console.log(username, roomname, socket.id)
-
-        // create user 
-        let join_params = {
-            socket_id: socket.id,
-            username,
-            roomname,
-            date: moment().format('MM-DD-YYYY HH:mmA')
-        }
-
-        socket.join(join_params.roomname);
+    socket.on('joinRoom', async (payload) => {
+        socket.join(payload.socket_id);
     })
 
-
-
-    socket.on('leaveRoom', ({ socket_id}) => {
-        socket.leave(socket_id)
-        console.log('User has left the room', socket_id)
+    socket.on('leaveRoom', (payload) => {
+        socket.leave(payload.socket_id)
+        leave_room(payload);
     })
 
-    // user sending the message
-    socket.on('chat', (text) => {
-        // gets the current user and the message sent
-        const c_user = getCurrentUser(socket.id);
-
-        let sendMsg = {
-            socket_id: socket.id,
-            text
-        }
-
-        io.to(c_user.roomname).emit('message', {
-            user_id: c_user.id,
-            username: c_user.username,
-            roomname: c_user.roomname,
-            text: text,
-            date: moment().format('MM-DD-YYYY HH:mmA'),
-        });
-
-    });
-
-
+    socket.on('chatMessage', payload => {
+        chat_message(payload)
+    })
 
     socket.on('disconnect', () => {
         console.log('Disconnected', socket.id)
     })
-
-
-// console.log("Socket ID:" , socket.id )
+    // console.log("Socket ID:" , socket.id )
 });
 
 
