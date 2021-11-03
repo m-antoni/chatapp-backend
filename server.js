@@ -8,7 +8,7 @@ require('dotenv').config();
 const connectDB = require('./config/db');
 const cors = require('cors');
 const os = require('os');
-const { joinRoom, leave_room, chat_message } = require('./controllers/chat.controller');
+const { joinRoom, leave_room, chat_message, get_all_messages } = require('./controllers/chat.controller');
 const io = require('socket.io')(server, { cors: { origin: "*" }});
 const Room = require('./models/Room');
 
@@ -95,17 +95,17 @@ connection.once('open', () => {
 
         const room = await Room.aggregate(pipeline);
 
-        console.log(change)
-        console.log(room)
+        // console.log(change)
+        // console.log(room)
                                     
         switch (change.operationType) {
             case 'insert':
                 console.log('Change Stream ROOM: INSERT')
-                io.to(room[0].socket_id).emit('message', room[0])
+                // io.to(room[0].socket_id).emit('message', room[0])
                 break;
             case 'update':
                 console.log('Change Stream ROOM: UPDATE')
-                io.to(room[0].socket_id).emit('message', room[0])
+                // io.to(room[0].socket_id).emit('message', room[0])
                 break;
             case 'delete': 
                 console.log('Change Stream ROOM: DELETE')
@@ -113,7 +113,6 @@ connection.once('open', () => {
             default:
                 break;
         }
- 
     })
 })
 
@@ -125,23 +124,42 @@ io.on("connection", (socket) => {
     // for a new user joining the room
     console.log("Socket ID: " + socket.id);
 
-    socket.on('joinRoom', async (payload) => {
-        socket.join(payload.socket_id);
+    socket.on('joinRoom', (payload) => {
+        socket.join(payload.room_id);
+        // console.log(socket)
     })
 
-    socket.on('leaveRoom', (payload) => {
-        socket.leave(payload.socket_id)
-        leave_room(payload);
+    socket.on('leaveRoom', async (payload) => {
+        socket.leave(payload.room_id)
+        const data = await leave_room(payload);
+        // io.to(data[0].room_id).emit('message', { room_id: data[0].room_id, messages: data[0].messages })
+
+        // send to all connected clients
+        io.emit('message', { room_id: data[0].room_id, messages: data[0].messages })
     })
 
-    socket.on('chatMessage', payload => {
-        chat_message(payload)
-    })
+    socket.on('chatMessage', async (payload) => {
+        const data = await chat_message(payload);
+        // console.log(data);
+        // io.to(data[0].room_id).emit('message', { room_id: data[0].room_id, messages: data[0].messages })
 
+        // send to all connected clients
+        io.emit('message', { room_id: data[0].room_id, messages: data[0].messages })
+    });
+
+    socket.on('getAllMessages', async (payload) => {
+        const data = await get_all_messages(payload);
+        // console.log(data)
+        // io.to(data[0].room_id).emit('message', { room_id: data[0].room_id, messages: data[0].messages })
+
+        // send to all connected clients
+        io.emit('message', { room_id: data[0].room_id, messages: data[0].messages })
+    });
+    
     socket.on('disconnect', () => {
         console.log('Disconnected', socket.id)
     })
-    // console.log("Socket ID:" , socket.id )
+   
 });
 
 

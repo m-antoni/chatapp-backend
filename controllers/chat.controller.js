@@ -95,29 +95,37 @@ exports.login = async (req, res) => {
 }
 
 
-exports.get_all_messages = async (req, res) => {
+exports.get_all_messages = async (userData, newSocketId) => {
     try {
         
+        // will update the socketid
+        // await Room.findByIdAndUpdate(userData.room_id, {  socket_id: newSocketId });
+        
+        // get all the messages
         const pipeline = [
             {
                 $match: {
-                    _id: ObjectId(req.params.id)
+                    _id: ObjectId(userData.room_id)
                 } 
             },
             {
                 $project: {
                     _id: 0,
+                    socket_id: "$socket_id",
+                    room_id: userData.room_id,
                     messages: "$messages",
                     total: {
                         $size: "$messages"
                     }
                 }
             }
-        ]
+        ];
+
+ 
 
         const getAllMessages = await Room.aggregate(pipeline);
-
-        res.json({ user_data: getAllMessages[0] });
+        // console.log(getAllMessages)
+        return getAllMessages;
 
     } catch (error) {
         console.log(error)
@@ -127,12 +135,13 @@ exports.get_all_messages = async (req, res) => {
 
 
 exports.chat_message = async (userData) => {
+
+    let data = [];
+
     try {
-    
+        
         const room = await Room.findOneAndUpdate(
-            {
-                _id: ObjectId(userData.room_id)
-            },
+            { _id: ObjectId(userData.room_id) },
             {
                 $push: {
                     "messages": {
@@ -142,19 +151,42 @@ exports.chat_message = async (userData) => {
                     },  
                 }
             }
-        )
+        );
+
+        // console.log(room)
+        const pipeline = [
+            {
+                $match: {  _id: room._id }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    socket_id: "$socket_id",
+                    room_id: userData.room_id,
+                    messages: "$messages",
+                    total_messages: { $size: "$messages" }
+                }
+            }
+        ];
+
+        const project = await Room.aggregate(pipeline);
+
+        data = project;
 
     } catch (err) {
         console.log(err);
     }
+
+    return data;
 }
 
 
 // update remove the user_id  in the users array
 exports.leave_room = async (userData) => {
     // console.log(userData)
+    let data = [];
     try {
-        await Room.findOneAndUpdate(
+        const room = await Room.findOneAndUpdate(
                 { socket_id: userData.socket_id },
                 {
                     $pull: {
@@ -172,9 +204,31 @@ exports.leave_room = async (userData) => {
 
                 },
             );
+                
+        // console.log(room)
+        const pipeline = [
+            {
+                $match: {  _id: room._id }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    socket_id: "$socket_id",
+                    room_id: userData.room_id,
+                    messages: "$messages",
+                    total_messages: { $size: "$messages" }
+                }
+            }
+        ];
+
+        const project = await Room.aggregate(pipeline);        
+
+        data = project;
 
     } catch (error) {
         console.log(error);
     }
+
+    return data;
 }
 
