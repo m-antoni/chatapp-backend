@@ -4,13 +4,19 @@ const ObjectId = mongoose.Types.ObjectId;
 const Room = require('./../models/Room');
 const User = require('./../models/User');
 
-exports.login = async (req, res) => {
+const login = async (req, res) => {
 
     const { socket_id, username, roomname } = req.body;
+
 
     try {
         // User validation 
         const findUser = await User.findOne({ username: username });
+
+        if(username === '' || roomname === ''){
+            res.status(404).json({ message: `username and roomname is required`});
+            return false;
+        }
 
         if(findUser){
             // check if the username is already in the room 
@@ -95,12 +101,8 @@ exports.login = async (req, res) => {
 }
 
 
-exports.get_all_messages = async (userData, newSocketId) => {
+const get_all_messages = async (userData) => {
     try {
-        
-        // will update the socketid
-        // await Room.findByIdAndUpdate(userData.room_id, {  socket_id: newSocketId });
-        
         // get all the messages
         const pipeline = [
             {
@@ -121,10 +123,8 @@ exports.get_all_messages = async (userData, newSocketId) => {
             }
         ];
 
- 
-
         const getAllMessages = await Room.aggregate(pipeline);
-        // console.log(getAllMessages)
+
         return getAllMessages;
 
     } catch (error) {
@@ -134,14 +134,16 @@ exports.get_all_messages = async (userData, newSocketId) => {
 }
 
 
-exports.chat_message = async (userData) => {
+const chat_message = async (userData) => {
 
     let data = [];
 
     try {
         
         const room = await Room.findOneAndUpdate(
-            { _id: ObjectId(userData.room_id) },
+            { 
+                _id: ObjectId(userData.room_id) 
+            },
             {
                 $push: {
                     "messages": {
@@ -153,25 +155,7 @@ exports.chat_message = async (userData) => {
             }
         );
 
-        // console.log(room)
-        const pipeline = [
-            {
-                $match: {  _id: room._id }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    socket_id: "$socket_id",
-                    room_id: userData.room_id,
-                    messages: "$messages",
-                    total_messages: { $size: "$messages" }
-                }
-            }
-        ];
-
-        const project = await Room.aggregate(pipeline);
-
-        data = project;
+        data = await AggregateProjectionPipeline(room._id, userData)
 
     } catch (err) {
         console.log(err);
@@ -182,12 +166,15 @@ exports.chat_message = async (userData) => {
 
 
 // update remove the user_id  in the users array
-exports.leave_room = async (userData) => {
-    // console.log(userData)
+const leave_room = async (userData) => {
+
     let data = [];
+
     try {
         const room = await Room.findOneAndUpdate(
-                { socket_id: userData.socket_id },
+                { 
+                    socket_id: userData.socket_id 
+                },
                 {
                     $pull: {
                         users: {
@@ -205,10 +192,26 @@ exports.leave_room = async (userData) => {
                 },
             );
                 
-        // console.log(room)
+        data = await AggregateProjectionPipeline(room._id, userData)
+
+    } catch (error) {
+        console.log(error);
+    }
+
+    return data;
+}
+
+
+
+const AggregateProjectionPipeline = async (roomID, userData) => {
+
+    let data = [];
+
+    try {
+        
         const pipeline = [
             {
-                $match: {  _id: room._id }
+                $match: {  _id: roomID }
             },
             {
                 $project: {
@@ -221,14 +224,19 @@ exports.leave_room = async (userData) => {
             }
         ];
 
-        const project = await Room.aggregate(pipeline);        
-
-        data = project;
+        data = await Room.aggregate(pipeline);
 
     } catch (error) {
-        console.log(error);
+        console.log(error)
     }
 
     return data;
 }
 
+
+module.exports = {
+    login,
+    get_all_messages,
+    chat_message,
+    leave_room,
+}

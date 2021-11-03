@@ -1,19 +1,13 @@
 const express = require('express');
 const app = express()
 const server = require('http').createServer(app);
-const moment = require('moment');
 const mongoose = require('mongoose');
-const ObjectId = mongoose.Types.ObjectId;
 require('dotenv').config();
-const connectDB = require('./config/db');
 const cors = require('cors');
 const os = require('os');
-const { joinRoom, leave_room, chat_message, get_all_messages } = require('./controllers/chat.controller');
+const { leave_room, chat_message, get_all_messages } = require('./controllers/chat.controller');
 const io = require('socket.io')(server, { cors: { origin: "*" }});
 const Room = require('./models/Room');
-
-// MongoDB Connection
-// connectDB();
 
 // enable cors
 app.use(cors());
@@ -40,7 +34,6 @@ app.get('/info', (req, res) => {
 
     res.json(info);
 });
-
 
 
 // Mongodb Connection
@@ -94,21 +87,18 @@ connection.once('open', () => {
         ];
 
         const room = await Room.aggregate(pipeline);
-
         // console.log(change)
         // console.log(room)
                                     
         switch (change.operationType) {
             case 'insert':
-                console.log('Change Stream ROOM: INSERT')
-                // io.to(room[0].socket_id).emit('message', room[0])
+                // console.log('Change Stream ROOM: INSERT')
                 break;
             case 'update':
-                console.log('Change Stream ROOM: UPDATE')
-                // io.to(room[0].socket_id).emit('message', room[0])
+                // console.log('Change Stream ROOM: UPDATE')
                 break;
             case 'delete': 
-                console.log('Change Stream ROOM: DELETE')
+                // console.log('Change Stream ROOM: DELETE')
                 break;
             default:
                 break;
@@ -140,7 +130,6 @@ io.on("connection", (socket) => {
 
     socket.on('chatMessage', async (payload) => {
         const data = await chat_message(payload);
-        // console.log(data);
         // io.to(data[0].room_id).emit('message', { room_id: data[0].room_id, messages: data[0].messages })
 
         // send to all connected clients
@@ -149,7 +138,6 @@ io.on("connection", (socket) => {
 
     socket.on('getAllMessages', async (payload) => {
         const data = await get_all_messages(payload);
-        // console.log(data)
         // io.to(data[0].room_id).emit('message', { room_id: data[0].room_id, messages: data[0].messages })
 
         // send to all connected clients
@@ -161,7 +149,6 @@ io.on("connection", (socket) => {
     })
    
 });
-
 
 
 // api routes
