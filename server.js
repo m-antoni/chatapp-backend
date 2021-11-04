@@ -8,6 +8,7 @@ const os = require('os');
 const { leave_room, chat_message, get_all_messages } = require('./controllers/chat.controller');
 const io = require('socket.io')(server, { cors: { origin: "*" }});
 const Room = require('./models/Room');
+const nodeCron = require('node-cron');
 
 // enable cors
 app.use(cors());
@@ -34,6 +35,7 @@ app.get('/info', (req, res) => {
 
     res.json(info);
 });
+
 
 
 // Mongodb Connection
@@ -153,6 +155,33 @@ io.on("connection", (socket) => {
 
 // api routes
 app.use('/api', require('./routes/chat.routes'));
+
+
+/*  Use cron job to drop the collection */
+nodeCron.schedule("0 0 0 * * *", async () => {
+
+    /* Do whatever you want in here. Send email, Make  database backup or download data */
+    /*
+        ┌────────────── second (optional)
+        │ ┌──────────── minute
+        │ │ ┌────────── hour
+        │ │ │ ┌──────── day of month
+        │ │ │ │ ┌────── month
+        │ │ │ │ │ ┌──── day of week
+        │ │ │ │ │ │
+        │ │ │ │ │ │
+        * * * * * *
+    */
+    
+    /* Schedule drop of collection every midnight */ 
+    await connection.collection('rooms').drop();
+    await connection.collection('users').drop();
+
+    console.log(`Collections has been drop at [${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}]`);
+
+}, { scheduled: true, timezone: 'Asia/Manila' })
+
+
 
 const PORT = process.env.PORT || 5000;
 
