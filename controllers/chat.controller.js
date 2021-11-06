@@ -39,9 +39,7 @@ const login = async (req, res) => {
                                                 username: user.username,
                                             },
                                             messages: {
-                                                user_id: user._id,
-                                                username: user.username,
-                                                text: `Welcome ${capitalize(user.username)}`
+                                                text: `Welcome ${capitalize(user.username)}.`
                                             },
                                         }
                                     }
@@ -58,9 +56,7 @@ const login = async (req, res) => {
                                 ],
                                 messages: [
                                     {
-                                        user_id: user._id,
-                                        username: user.username,
-                                        text: `Welcome ${capitalize(user.username)}`
+                                        text: `Welcome ${capitalize(user.username)}.`
                                     }
                                 ] 
                             })
@@ -169,9 +165,7 @@ const leave_room = async (userData) => {
                     },
                     $push :{
                         messages: {
-                            user_id: userData._id,
-                            username: userData.username,
-                            text: `${capitalize(userData.username)} has left the chat room`
+                            text: `${capitalize(userData.username)} has left the chat room.`
                         },
                     }
 
