@@ -8,31 +8,17 @@ const login = async (req, res) => {
 
     const { socket_id, username, roomname } = req.body;
 
+    if(username === '' || roomname === ''){
+        res.status(404).json({ message: `username and roomname is required`});
+        return false;
+    }
 
     try {
         // User validation 
         const findUser = await User.findOne({ username: username });
-
-        if(username === '' || roomname === ''){
-            res.status(404).json({ message: `username and roomname is required`});
-            return false;
-        }
-
         if(findUser){
-            // check if the username is already in the room 
-            const findUserInRoom = await Room.findOne({ 
-                                            roomname: roomname, 
-                                            users: { 
-                                                $elemMatch: { 
-                                                    user_id: findUser._id 
-                                                } 
-                                            }
-                                        });
-
-            if(findUserInRoom){
-                res.status(404).json({ message: `${username} is already in the room, please try another name` });
-                return false;
-            }
+            res.status(404).json({ message: `${username} is already taken, please use another name` });
+            return false;
         }
 
         const user = await User.create({ username });

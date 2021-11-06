@@ -159,8 +159,6 @@ app.use('/api', require('./routes/chat.routes'));
 
 /*  Use cron job to drop the collection */
 nodeCron.schedule("0 0 0 * * *", async () => {
-
-    /* Do whatever you want in here. Send email, Make  database backup or download data */
     /*
         ┌────────────── second (optional)
         │ ┌──────────── minute
@@ -173,9 +171,14 @@ nodeCron.schedule("0 0 0 * * *", async () => {
         * * * * * *
     */
     
-    /* Schedule drop of collection every midnight */ 
+    /* 
+    *   Do whatever you want in here. Send email, Make  database backup or download data
+    *
+    *   Schedule drop of collection every midnight 
+    */ 
     await connection.collection('rooms').drop();
     await connection.collection('users').drop();
+    // await connection.collection('test').drop();
 
     console.log(`Collections has been drop at [${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}]`);
 
