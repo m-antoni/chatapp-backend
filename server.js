@@ -6,7 +6,7 @@ require('dotenv').config();
 const cors = require('cors');
 const os = require('os');
 const { leave_room, chat_message, get_all_messages } = require('./controllers/chat.controller');
-const io = require('socket.io')(server, { cors: { origin: "*" }});
+const io = require('socket.io')(server, { path: '/api/socket.io', cors: { origin: "*"}});
 const Room = require('./models/Room');
 const nodeCron = require('node-cron');
 
@@ -22,14 +22,17 @@ app.use(express.urlencoded({ extended: true }));
 
 
 // api base route
-app.get('/info', (req, res) => {
+app.get('/', (req, res) => {
     const info = {
-        details: 'Simple Chat App using MERN Stack, socket.io',
+        name: 'ChatHive',
+        description: 'Simple chat app using MERN Stack, socket.io',
         created: 'Michael Antoni',
         server: {
             node: process.version,
-            platform: os.cpus().length,
-            memory: Math.round( os.totalmem() / 1024 / 1024 ) 
+            cpu: os.cpus()[0].model,
+            cores: os.cpus().length,
+            platform: process.platform,
+            memory: Math.round( os.totalmem() / 1024 / 1024 ),
         }
     }
 
