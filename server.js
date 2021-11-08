@@ -122,7 +122,7 @@ io.on("connection", (socket) => {
     socket.on('joinRoom', (payload) => {
         socket.join(payload.room_id);
         // console.log(socket)
-        io.emit('message', { room_id: data[0].room_id, messages: data[0].messages })
+        // socket.broadcast.emit('message', { room_id: data[0].room_id, messages: data[0].messages })
     })
 
     socket.on('leaveRoom', async (payload) => {
@@ -149,11 +149,15 @@ io.on("connection", (socket) => {
         // send to all connected clients
         io.emit('message', { room_id: data[0].room_id, messages: data[0].messages })
     });
+
+    socket.on("typing", async (payload) => {
+        socket.broadcast.emit("typing", payload);
+        console.log(payload)
+    });
     
     socket.on('disconnect', () => {
         console.log('Disconnected', socket.id)
     })
-   
 });
 
 

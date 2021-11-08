@@ -39,7 +39,7 @@ const login = async (req, res) => {
                                                 username: user.username,
                                             },
                                             messages: {
-                                                text: `Welcome ${capitalize(user.username)}.`
+                                                text: `Welcome ${capitalize(user.username)}!`
                                             },
                                         }
                                     }
@@ -49,14 +49,14 @@ const login = async (req, res) => {
         }else{
             // insert the new room 
             const room = await Room.create({ 
-                                socket_id, 
-                                roomname, 
+                                socket_id,
+                                roomname,
                                 users: [
                                     { user_id: user._id }
                                 ],
                                 messages: [
                                     {
-                                        text: `Welcome ${capitalize(user.username)}.`
+                                        text: `Welcome ${capitalize(user.username)}!`
                                     }
                                 ] 
                             })
