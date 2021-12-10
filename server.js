@@ -194,6 +194,48 @@ nodeCron.schedule("0 0 0 * * *", async () => {
 
 
 
+
+/* For testing puposes only */
+app.get('/drop/:col', async (req, res) => {
+
+    const { col } = req.params;
+
+    let message = {};
+    switch (col) {
+        case 'users':
+            await connection.collection('users').drop();
+            message = {
+                status: 'ok',
+                text: 'users collection has been drop'
+            }
+            break;
+        case 'rooms':
+            await connection.collection('rooms').drop();
+            message = {
+                status: 'ok',
+                text: 'rooms collection has been drop'
+            }
+            break;
+        case 'all':
+            await connection.collection('users').drop();
+            await connection.collection('rooms').drop();
+            message = {
+                status: 'ok',
+                text: 'rooms/users collections has been drop'
+            }
+            break;
+        default:
+            message = {
+                status: 'bad',
+                text: 'Not found!'
+            }
+            break;
+    }
+    // console.log(col)
+    res.json(message);
+});
+
+
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
